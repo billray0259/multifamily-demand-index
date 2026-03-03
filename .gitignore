@@ -1,0 +1,39 @@
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Temporary / lock files
+~$*
+
+# Environment variables / secrets
+.env
+*.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Streamlit cache and credentials
+.streamlit/secrets.toml
+.streamlit/credentials.toml
+
+# Census API cache (may contain keys in filenames; regenerated automatically)
+census_*_cache.json
+
+# Large data files — upload separately
+*.xlsx
+*.csv
+*.tsv
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Generated outputs (regenerate locally)
+*.pptx
