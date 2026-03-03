@@ -213,3 +213,105 @@ The index produces statistically significant, monotonically ordered tier separat
 - Internet connection (for Census API enrichment only — the core app works offline)
 
 All Python dependencies are in `requirements.txt` and installed automatically by the launcher scripts.
+
+---
+
+## Extending This Tool with Claude Code
+
+Claude Code is an AI coding agent that runs in your terminal and can read, edit, and reason about the entire codebase. You don't need to know how to code to use it — you describe what you want in plain English and it makes the changes.
+
+### 1. Install Claude Code
+
+You need [Node.js](https://nodejs.org) (version 18 or newer) installed first. Then open Terminal and run:
+
+```
+npm install -g @anthropic-ai/claude-code
+```
+
+Check it worked:
+
+```
+claude --version
+```
+
+### 2. Get an Anthropic API Key
+
+1. Go to **[console.anthropic.com](https://console.anthropic.com)**
+2. Sign up or log in
+3. Navigate to **API Keys** and click **Create Key**
+4. Copy the key (it starts with `sk-ant-...`)
+5. Set it in your terminal:
+
+```bash
+export ANTHROPIC_API_KEY="sk-ant-your-key-here"
+```
+
+> To avoid re-entering this every session, add that line to your `~/.bashrc` or `~/.zshrc` file.
+
+### 3. Fork and Clone the Repo
+
+1. Go to **[github.com/billray0259/multifamily-demand-index](https://github.com/billray0259/multifamily-demand-index)**
+2. Click **Fork** (top-right) to copy it to your own GitHub account
+3. Clone your fork:
+
+```bash
+git clone https://github.com/YOUR-USERNAME/multifamily-demand-index.git
+cd multifamily-demand-index
+```
+
+### 4. Launch Claude Code
+
+From inside the repo folder:
+
+```
+claude
+```
+
+Claude Code will read the entire codebase and wait for your instructions. You'll see a `>` prompt.
+
+### 5. Ask It to Make Changes — Examples
+
+You can type requests in plain English. Some examples:
+
+**Change the weights:**
+> "Change the weight for Employment Growth from 25% to 20% and add a new component for Permit Activity at +10% weight. Update config.py."
+
+**Add a new data source:**
+> "Add a new optional input for RealPage rent data. If a RealPage file is uploaded, add a 'Rent Trend' component to the index worth 15% weight."
+
+**Adjust the scoring tiers:**
+> "Change the tier thresholds so High Demand is above 70, Moderate is 40–70, and Low is below 40."
+
+**Change the UI:**
+> "Add a slider to the app that lets the user adjust the weight allocated to absorption vs. vacancy before computing the index."
+
+**Add a new export tab:**
+> "Add a new sheet to the Excel export called 'Peer Comparison' that shows each market's score compared to the average of its tier."
+
+**Run the validation backtest after any changes:**
+> "Run the historical backtest on the updated model and show me the Pearson r and tier medians."
+
+### 6. Review, Test, and Commit
+
+After Claude makes changes, review them and test the app:
+
+```bash
+./run.sh
+```
+
+If everything looks good, commit the changes:
+
+```bash
+git add .
+git commit -m "Describe what you changed"
+git push
+```
+
+### Tips for Working with Claude Code
+
+- **Be specific about what you want changed and why** — e.g. "I want to reduce the weight on deliveries because our strategy focuses on longer-hold periods where near-term supply matters less"
+- **Ask it to explain before changing** — type "explain how the scoring is calculated before making any changes" to build understanding
+- **Iterate in small steps** — make one change at a time, test it, then move to the next
+- **Ask it to validate** — after any methodology change, ask "run the backtest and tell me if the new model is more or less predictive than the original"
+- **It remembers the whole session** — you can say "undo that last change" or "go back to what we had before"
+
