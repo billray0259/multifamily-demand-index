@@ -1,6 +1,6 @@
 # Multifamily Demand Index App
 
-A research-backed tool that scores and ranks multifamily markets on a **0–100 Demand Index** using CoStar data — optionally enriched with U.S. Census demographics. Built for investment teams at Quannah Partners who need a fast, auditable way to screen metros for value-add multifamily expansion.
+A research-backed tool that scores and ranks multifamily markets on a **0–100 Demand Index** using CoStar data — optionally enriched with U.S. Census demographics. Designed for investment teams who need a fast, auditable way to screen metros for value-add multifamily expansion.
 
 ---
 
