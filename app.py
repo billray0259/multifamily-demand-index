@@ -13,7 +13,12 @@ from streamlit_js_eval import streamlit_js_eval
 
 from ingest import ingest_files, get_latest_quarter, compute_lagged_features
 from census_enhance import enhance_with_census
-from demand_index import compute_demand_index
+from demand_index import (
+    compute_demand_index,
+    compute_absorption_supply_index,
+    MODEL_WEIGHTED_Z,
+    MODEL_ABS_SUPPLY,
+)
 from export import generate_workbook
 from validate import run_backtest
 from validate_charts import scatter_chart, tier_boxplot
@@ -165,6 +170,27 @@ The app will clean up trailing copy markers like ` (1)` automatically, but clean
     # ── Process button ───────────────────────────────────────────────────
     st.subheader("2 · Process & Compute Index")
 
+    model_type = st.radio(
+        "Scoring model",
+        options=[
+            MODEL_WEIGHTED_Z,
+            MODEL_ABS_SUPPLY,
+        ],
+        format_func=lambda m: {
+            MODEL_WEIGHTED_Z: "📊 Weighted Z-Score  (research-backed composite; uses Census if available)",
+            MODEL_ABS_SUPPLY: "⚗️ Absorption / Supply Pressure  (absorption ÷ vacant + pipeline; experimental)",
+        }[m],
+        horizontal=False,
+        help=(
+            "**Weighted Z-Score** normalises each component to a z-score, applies "
+            "research-derived weights, and rescales to 0–100.\n\n"
+            "**Absorption / Supply Pressure** computes "
+            "`absorption_units / (inventory × vacancy% + under_construction_units)` — "
+            "a ratio inversely proportional to months-of-supply at current absorption. "
+            "CoStar-only; no Census data used."
+        ),
+    )
+
     col1, col2 = st.columns([1, 3])
     with col1:
         process_btn = st.button("🚀 Compute Demand Index", type="primary", use_container_width=True)
@@ -176,7 +202,7 @@ The app will clean up trailing copy markers like ` (1)` automatically, but clean
         st.info(f"📁 {len(uploaded_files)} file(s) selected. Click **Compute Demand Index** to proceed.")
         st.stop()
 
-    def _run_pipeline(uploaded_files, census_key, cbsa_overrides):
+    def _run_pipeline(uploaded_files, census_key, cbsa_overrides, model_type=MODEL_WEIGHTED_Z):
         """Run the full pipeline; returns a dict of results or raises."""
         with st.status("Processing…", expanded=True) as status:
             # Step 1: Ingest
@@ -247,7 +273,10 @@ The app will clean up trailing copy markers like ` (1)` automatically, but clean
 
             # Step 4: Compute index
             st.write("🔢 Computing Demand Index…")
-            rankings, components = compute_demand_index(latest)
+            if model_type == MODEL_ABS_SUPPLY:
+                rankings, components = compute_absorption_supply_index(latest)
+            else:
+                rankings, components = compute_demand_index(latest)
             st.write(f"✅ Ranked **{len(rankings)} markets**")
 
             # Step 5: Generate Excel
@@ -272,7 +301,7 @@ The app will clean up trailing copy markers like ` (1)` automatically, but clean
 
     if process_btn or cbsa_rerun:
         cbsa_overrides = st.session_state.get("cbsa_overrides", {})
-        result = _run_pipeline(uploaded_files, census_key, cbsa_overrides)
+        result = _run_pipeline(uploaded_files, census_key, cbsa_overrides, model_type)
         for k, v in result.items():
             st.session_state[k] = v
 

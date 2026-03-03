@@ -16,6 +16,9 @@ from config import (
     TIER_THRESHOLDS,
 )
 
+MODEL_WEIGHTED_Z    = "weighted_z"
+MODEL_ABS_SUPPLY    = "abs_supply"
+
 
 def _has_census_data(df: pd.DataFrame) -> bool:
     """Check whether Census columns are present and populated."""
@@ -151,4 +154,80 @@ def compute_demand_index(df_latest: pd.DataFrame) -> Tuple[pd.DataFrame, pd.Data
     # ── Assemble components breakdown ────────────────────────────────────
     components_out = z_df.sort_values("Demand_Index", ascending=False).reset_index(drop=True)
 
+    return rankings, components_out
+
+
+def compute_absorption_supply_index(
+    df_latest: pd.DataFrame,
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Alternative model: score = absorption_units / (inventory * vacancy_pct/100 + uc_units)
+
+    Conceptually this is absorption relative to the total "contested" unit pool:
+    the units already vacant today plus the under-construction pipeline that will
+    hit the market soon.  A high ratio means demand is outrunning available and
+    incoming supply — analogous to a low months-of-supply figure.
+
+    Entirely CoStar-derived; no Census data required.
+    """
+    records = []
+    for _, row in df_latest.iterrows():
+        inv       = row.get("Inventory Units", np.nan)
+        abs_units = row.get("Absorption Units", np.nan)
+        vac_pct   = row.get("Vacancy Percent", np.nan)   # e.g. 7.2 (not 0.072)
+        uc_units  = row.get("Under Construction Units", np.nan)
+
+        vacant_units = (inv * vac_pct / 100.0
+                        if pd.notna(inv) and pd.notna(vac_pct) else np.nan)
+        uc = float(uc_units) if pd.notna(uc_units) else 0.0
+        vac = float(vacant_units) if pd.notna(vacant_units) else 0.0
+        denom = vac + uc
+
+        if denom > 0 and pd.notna(abs_units):
+            raw_score = abs_units / denom
+        else:
+            raw_score = np.nan
+
+        records.append({
+            "Market":            row["Market"],
+            "absorption_units_raw": abs_units,
+            "vacant_units_raw":     vacant_units,
+            "uc_units_raw":         uc_units,
+            "denominator_raw":      denom if denom > 0 else np.nan,
+            "raw_score":            raw_score,
+        })
+
+    comp_df = pd.DataFrame(records)
+
+    # ── Rescale to 0–100 ────────────────────────────────────────────────
+    valid = comp_df["raw_score"].dropna()
+    raw_min, raw_max = (valid.min(), valid.max()) if len(valid) > 1 else (0.0, 1.0)
+
+    if raw_max == raw_min:
+        comp_df["Demand_Index"] = 50.0
+    else:
+        comp_df["Demand_Index"] = (
+            (comp_df["raw_score"] - raw_min) / (raw_max - raw_min) * 100
+        ).fillna(50.0)
+
+    # ── Tier classification ──────────────────────────────────────────────
+    def _tier(score):
+        if score >= TIER_THRESHOLDS["High Demand"]:
+            return "High Demand"
+        elif score >= TIER_THRESHOLDS["Moderate Demand"]:
+            return "Moderate Demand"
+        else:
+            return "Low Demand"
+
+    comp_df["Tier"] = comp_df["Demand_Index"].apply(_tier)
+
+    # ── Assemble rankings table ──────────────────────────────────────────
+    rankings = df_latest.copy()
+    rankings = rankings.merge(
+        comp_df[["Market", "Demand_Index", "Tier"]], on="Market", how="left"
+    )
+    rankings = rankings.sort_values("Demand_Index", ascending=False).reset_index(drop=True)
+    rankings.insert(0, "Rank", range(1, len(rankings) + 1))
+
+    components_out = comp_df.sort_values("Demand_Index", ascending=False).reset_index(drop=True)
     return rankings, components_out

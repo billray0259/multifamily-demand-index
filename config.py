@@ -42,6 +42,17 @@ INDEX_WEIGHTS_FULL = {
     "deliveries_pct":      -0.10,   # Deliveries as % of inventory
 }
 
+# ── Alternative Model: Absorption / Supply Pressure ────────────────────────
+# score = absorption_units / (inventory_units * vacancy_pct/100 + uc_units)
+#
+# Numerator  : quarterly net absorption (units actually leased)
+# Denominator: total "contested" unit pool = units already vacant today
+#              + under-construction pipeline arriving soon
+#
+# Interpretation: higher ratio → demand is outrunning available + incoming
+# supply; conceptually the inverse of months-of-supply at current absorption.
+# Entirely CoStar-derived. Rescaled to 0-100 the same way as the weighted model.
+
 # When Census data is unavailable, rebalance to CoStar-only weights.
 # Absorption is the dominant observable demand signal; occupancy captures
 # current tightness; prior-year vacancy provides the key lagged slack indicator
